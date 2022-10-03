@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-# !/usr/bin/env python
+#!/usr/bin/env python
 '''
 @file        :mainwindow.py
 @describe    :
@@ -8,22 +8,22 @@
 @versions    :1.0
 '''
 
+from cgi import test
+from email.mime import image
 from pickle import TRUE
 import sys
 import os
 from turtle import width
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-# try:
-#     from PySide2.QtWidgets import *
-#     from PySide2.QtGui import *
-#     from PySide2.QtCore import *
-# except ImportError:
-#     from PyQt5.QtWidgets import *
-#     from PyQt5.QtGui import *
-#     from PyQt5.QtCore import *
 
+try:
+    from PyQt5.QtWidgets import*
+    from PyQt5.QtGui import*
+    from PyQt5.QtCore import*
+  
+except ImportError:
+    from PySide2.QtWidgets import*
+    from PySide2.QtGui import*
+    from PySide2.QtCore import* 
 
 class ImaageLabel(QWidget):
     """
@@ -33,35 +33,45 @@ class ImaageLabel(QWidget):
     def __init__(self, text, image_path):
         super().__init__()
         # get icon path
+        icons_path = '\icons'
         _path = __file__.decode('gbk') if sys.version_info < (3, 0) else __file__
-        root = os.path.dirname(os.path.dirname(_path))
+        root = os.path.dirname(os.path.dirname(_path))+icons_path
         path = os.path.join(root)
 
         lb_image = QLabel()
 
-        pixmap = QPixmap(path + image_path).scaled(QSize(50, 50))
+        #set pixmap size 
+        pixmap = QPixmap(path + image_path).scaled(QSize(50, 50)) #返回缩放后的新的图片对象
+        pixmap.load(path + image_path)
         lb_image.setPixmap(pixmap)
         lb_image.setAlignment(Qt.AlignCenter)
 
-        lb_text = QLabel()
+        lb_text = QPushButton()
         lb_text.setText(text)
-        lb_text.setAlignment(Qt.AlignCenter)
+        # lb_text.setIcon(image_path)
+        # lb_text.setAlignment(Qt.AlignCenter)
         font = QFont()
         font.setPixelSize(20)
         lb_text.setFont(font)
 
+        # lab_btn =QPushButton()
+
         show_layout = QVBoxLayout()
-        show_layout.setContentsMargins(0, 0, 0, 0)
+        show_layout.setContentsMargins(0, 0, 0, 0)    #空间留白设置为零
 
         self.setLayout(show_layout)
         show_layout.addWidget(lb_image)
         show_layout.addWidget(lb_text)
+        # show_layout.addWidget(lab_btn)
 
+        #固定尺寸，set 控件大小
         self.setFixedSize(100, 100 + 20)
         lb_image.setFixedSize(100, 100)
-        lb_text.setFixedSize(100, 20)
+        lb_text.setFixedSize(100, 30)
+        
 
-
+        print(pixmap)
+        
 class Kazusa_Tools_Ui(QWidget):
     def __init__(self ):
         super(Kazusa_Tools_Ui, self).__init__()
@@ -95,42 +105,64 @@ class Kazusa_Tools_Ui(QWidget):
         self.fx_button.toggled.connect(lambda :self.btnstate(self.fx_button))
         self.model_button.toggled.connect(lambda :self.btnstate(self.model_button))
 
+    
+    def add_item(self,text,image_path):
+        imglb = ImaageLabel(text,image_path)
+        # img_btn = QPushButton(text)
+        
+        # img_btn.setIcon(imglb)
+        
+        item = QListWidgetItem()
+        
+        item.setSizeHint(imglb.size())
+        self.lw.addItem(item)
+        self.lw.setItemWidget(item, imglb)
+        print(image_path)
+
+    def test(self):
+        print('test button')
+
     def fx_ui(self):
         # create iamge ui
+        fx_tool_list = ["fx1",'fx2','fx3','fx4']
+        
         self.layout = QHBoxLayout()
-        lw = QListWidget()
+        self.lw = QListWidget()
+        self.lw.setFlow(QListWidget.LeftToRight)  #button left to right
+        self.lw.setWrapping(True)
+        self.lw.setResizeMode(QListView.Adjust)
+        for i in fx_tool_list:
+            self.add_item(i,'/test{}.png'.format(fx_tool_list.index(i)))
+        self.lw.setItemWidget(self.test)
 
-        imglb = ImaageLabel('aaa', 'icons/test.png')
-        item = QListWidgetItem()
-        item.setSizeHint(imglb.size())
-        lw.addItem(item)
-        lw.setItemWidget(item, imglb)
-        self.layout.addWidget(lw)
 
+        self.layout.addWidget(self.lw)
         self.stack_fx.setLayout(self.layout)
-        print("Fx")
+        
     def rig_ui(self):
+        rig_tool_list = ["rig1",'rig2','rig3','rig4']
+        
         self.layout = QHBoxLayout()
-        lw = QListWidget()
-        imglb = ImaageLabel('bbb', 'icons/test.png')
-        item = QListWidgetItem()
-        item.setSizeHint(imglb.size())
-        lw.addItem(item)
-        lw.setItemWidget(item, imglb)
-        self.layout.addWidget(lw)
-        # self.stack_rig.addWidget(self.rig_layout)
-
+        self.lw = QListWidget()
+        self.lw.setFlow(QListWidget.LeftToRight)  #button left to right
+        self.lw.setWrapping(True)
+        self.lw.setResizeMode(QListView.Adjust)
+        for i in rig_tool_list:
+            self.add_item(i,'/test{}.png'.format(rig_tool_list.index(i)))
+    
+        self.layout.addWidget(self.lw)
         self.stack_rig.setLayout(self.layout)
         print("rig")
     def animation_ui(self):
         self.layout = QHBoxLayout()
-        lw = QListWidget()
-        imglb = ImaageLabel('ccc', 'icons/test.png')
+        self.lw = QListWidget()
+        self.imglb_test = ImaageLabel('ccc', '/test2.png')
+        
         item = QListWidgetItem()
-        item.setSizeHint(imglb.size())
-        lw.addItem(item)
-        lw.setItemWidget(item, imglb)
-        self.layout.addWidget(lw)
+        item.setSizeHint(self.imglb.size())
+        self.lw.addItem(item)
+        self.lw.setItemWidget(item, self.imglb)
+        self.layout.addWidget(self.lw)
         # self.main_layout.addLayout(self.rig_layout)
 
         self.stack_animation.setLayout(self.layout)
@@ -138,13 +170,13 @@ class Kazusa_Tools_Ui(QWidget):
 
     def model_ui(self):
         self.layout = QHBoxLayout()
-        lw = QListWidget()
-        imglb = ImaageLabel('ddd', 'icons/test.png')
+        self.lw = QListWidget()
+        self.imglb = ImaageLabel('ddd', '/test1.png')
         item = QListWidgetItem()
-        item.setSizeHint(imglb.size())
-        lw.addItem(item)
-        lw.setItemWidget(item, imglb)
-        self.layout.addWidget(lw)
+        item.setSizeHint(self.imglb.size())
+        self.lw.addItem(item)
+        self.lw.setItemWidget(item, self.imglb)
+        self.layout.addWidget(self.lw)
 
         self.stack_model.setLayout(self.layout)
         print("model")
@@ -180,14 +212,11 @@ class Kazusa_Tools_Ui(QWidget):
 
         self.setLayout(self.main_layout)
 
-        # self.main_layout.addWidget(self.left_layout)
+        
 
     def create_connections(self):
         pass
-        # self.rig_button.toggled.connect(lambda :self.btnstate(self.rig_button))
-        # self.animation_button.toggled.connect(lambda :self.btnstate(self.animation_button))
-        # self.fx_button.toggled.connect(lambda :self.btnstate(self.fx_button))
-        # self.model_button.toggled.connect(lambda :self.btnstate(self.model_button))
+
 
     def btnstate(self,btn):
 
@@ -224,6 +253,7 @@ class Kazusa_Tools_Ui(QWidget):
                 print(btn.text()+" is selected")
                 # self.stack_fx.setLayout(self.layout)
                 self.stack_ui.setCurrentIndex(3)
+                
 
 
             else:

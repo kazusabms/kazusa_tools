@@ -1,0 +1,266 @@
+# -*- encoding: utf-8 -*-
+#!/usr/bin/env python
+'''
+@file        :animation_tool.py
+@describe    :
+@time        :2022/12/13 13:54:31
+@author      :touma_kazusa
+@versions    :1.0
+'''
+import sys
+from functools import wraps
+from PySide2.QtWidgets import*
+from PySide2.QtGui import*
+from PySide2.QtCore import* 
+import maya.cmds as mc
+import maya.mel as mel
+import pymel.core as pm
+import maya.OpenMayaUI as omui
+from shiboken2 import wrapInstance
+
+def make_undo(func):
+    @wraps(func)
+    def wrap(*args,**kwargs):
+        mc.undoInfo(openChunk=True)
+        result = func(*args,**kwargs)
+        mc.undoInfo(closeChunk=True)
+        return result
+    return wrap
+
+def maya_main_window():
+    main_window_ptr = omui.MQtUtil.mainWindow()
+    return wrapInstance(int(main_window_ptr),QWidget)
+
+class Animation_tools(QDialog):
+    def __init__(self,parent = maya_main_window()):
+        super(Animation_tools,self).__init__(parent)
+
+
+        
+        self.setWindowTitle("ui_test")
+        self.resize(200,600)
+        self.setWindowFlags(self.windowFlags()^Qt.WindowContextHelpButtonHint)
+        
+
+        self.create_widgets()
+        self.create_layouts()
+        self.create_connections()
+
+
+
+
+    def create_widgets(self):
+        self.load_line= QLabel(u'create_loc')
+        self.load_ctrl_btn = QPushButton(u"Coad_Ctrl")
+        self.create_loc_btn = QPushButton(u"Create_Loc")
+        self.back_animatin_btn = QPushButton(u"Back_Animation")
+        
+        self.get_time_btn = QPushButton(u'Get_Timeline')
+        self.start_time_line = QLineEdit()
+        self.start_time_line.setValidator(QIntValidator())#只输入数字
+        self.end_time_line= QLineEdit()
+        self.end_time_line.setValidator(QIntValidator())
+        
+
+
+    def create_layouts(self):
+        # grp_box = QGroupBox('选择控制器创建定位器')
+        
+        
+        create_layout = QVBoxLayout()
+        create_layout.addWidget(self.load_line)
+        create_layout.addWidget(self.load_ctrl_btn)
+        create_layout.addWidget(self.create_loc_btn)
+        create_layout.addWidget(self.back_animatin_btn)
+    
+
+        back_time_layouts = QHBoxLayout()
+        back_time_layouts.addWidget(self.start_time_line)
+        back_time_layouts.addWidget(self.end_time_line)
+        back_time_layouts.addWidget(self.get_time_btn)
+        
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.addLayout(create_layout)    
+        self.main_layout.addLayout(back_time_layouts)
+
+        # self.main_layout.setl
+
+
+
+    def create_connections(self):
+        self.create_loc_btn.clicked.connect(self.create_loc)
+        self.load_ctrl_btn.clicked.connect(self.get_ctrl_lists)
+        self.get_time_btn.clicked.connect(self.get_selected_time_range)
+        self.back_animatin_btn.clicked.connect(self.back_animatin)
+
+
+
+
+
+    def objExists(self,obj):
+        if obj:
+            return mc.objExists(obj)
+        else:
+            return False
+    
+
+    
+    def get_ctrl_lists(self):
+        self.select_ctrl_lists=mc.ls(sl=True)
+        print(self.select_ctrl_lists)
+        return self.select_ctrl_lists
+    
+    
+    def get_transfer_lists(self):
+        self.transfer_lists = mc.ls(sl=True)
+        return self.transfer_lists
+    def create_loc(self):
+        
+        self.anim_loc_lists =[]
+        self.constraint_lists=[]
+
+        if mc.objExists("anim_locator_grp"):
+            if mc.listRelatives('anim_locator_grp'):
+                for inf in mc.listRelatives("anim_locator_grp"):
+                    mc.delete(inf)
+        else:
+            self.create_grp = mc.group(n='anim_locator_grp',em=1)
+
+        for select_ctrl in self.select_ctrl_lists:
+            
+            # if mc.objExists(self.anim_loc_lists):
+            #     mc.delete(self.anim_loc_lists)
+            
+            self.create_loc = mc.spaceLocator(name=select_ctrl+'_loc')
+            # mc.setAttr(self.create_loc+'Shape.localScaleX',1.0)
+            # mc.setAttr(self.create_loc+'Shape.localScaleY',1.0)
+            # mc.setAttr(self.create_loc+'Shape.localScaleZ',1.0)
+            # mc.matchTransform(self.create_loc,select_ctrl)
+            mc.parent(self.create_loc,'anim_locator_grp')
+            constraint_loc = mc.parentConstraint(select_ctrl,self.create_loc,mo=0)
+            self.anim_loc_lists.append(self.create_loc)
+            self.constraint_lists.append(constraint_loc)
+        
+        
+
+        return self.anim_loc_lists,self.constraint_lists,self.create_loc,self.create
+
+    # def get_input_time(self):
+    #     self.start_time =self.start_time_line.setText()
+    #     self.end_time = self.end_time_line.setText()
+
+        
+    #     return self.start_time,self.end_time
+
+    def get_auto_key(self):
+        return mc.autoKeyframe(state=True,query=True)
+    
+    def set_auto_key(self,state=None):
+        if state is not None:
+            mc.autoKeyframe(state= state)
+    
+    def set_frame(self,frame=None):
+        mc.currentTime(frame)
+    
+    def delete_node(self,node=None):
+        if node:mc.delete(node)
+    
+    def del_keyframe(self,node,frame):
+        mc.cutKey(node,time=(frame,frame))
+    
+    def del_keyframes(self,node='',attribute='',startfame=None,endframe=None):
+        '''
+        Delete keyframes between the given times, for the given attribute (or all attributes)
+        '''
+
+        if not node or not mc.objExists(node) or startfame is None or endframe is None:
+            return
+        
+        try:
+            if not mc.getAttr("{}.{}".format(node,attribute),keyable=True):
+                return
+        except:
+            return
+        if attribute:
+            mc.cutKey(node,attribute=attribute,time = (startfame,endframe))
+        else:
+            mc.cutKey(node,time=(startfame,endframe))
+
+    def set_undo(self,state):
+        if state is 'start':
+            mc.undoinfo(openChunk =True)
+        elif state is 'stop':
+            mc.undoinfo(closeChunk=True)
+    
+    @make_undo
+    def back_animatin(self):
+        #s_time= start_time, e_time= end_time 
+        start_time,end_time = self.getCurrentTimeRange()
+        mc.bakeResults(self.anim_loc_lists, simulation=1, t=(start_time, end_time), oversamplingRate=1, disableImplicitControl=1,
+                            preserveOutsideKeys=1, sparseAnimCurveBake=0,
+                            removeBakedAttributeFromLayer=0, removeBakedAnimFromLayer=0, bakeOnOverrideLayer=0,
+                            minimizeRotation=1, controlPoints=0,
+                            shape=1)
+
+        mc.delete(self.constraint_lists)
+    @make_undo
+    def transfer_animation(self):
+        start_time,end_time = self.getCurrentTimeRange()
+        for loc,ctrl in zip(self.anim_loc_lists,self.select_ctrl_lists):
+            connect_onstraint= mc.parentConstraint(loc,ctrl,mo=0)
+        mc.bakeResults(self.select_ctrl_lists, simulation=1, t=(start_time, end_time), oversamplingRate=1, disableImplicitControl=1,
+                    preserveOutsideKeys=1, sparseAnimCurveBake=0,
+                    removeBakedAttributeFromLayer=0, removeBakedAnimFromLayer=0, bakeOnOverrideLayer=0,
+                    minimizeRotation=1, controlPoints=0,
+                    shape=1)
+        mc.delete(connect_onstraint)
+        
+    def setFrameFromTimeline(self,widget):
+        cur_frame = mc.currentTime(q=1)
+        str_frame= str(int(cur_frame))
+        widget.setText(str_frame)
+    def get_selected_time_range(self):
+        main_time_control = mel.eval('$tmpVar=$gPlayBackSlider')
+        selected_range = mc.timeControl(main_time_control,rangeArray = True,query =True)
+        time_range= [int(selected_range[0],int(selected_range[1]))]
+        time_delta=time_range[1] - time_range[0]
+        
+        if time_delta >1:
+            start_time = time_range[0]
+            end_time = time_range[1]
+        else:
+            start_time ,end_time = self.getCurrentTimeRange()
+        return start_time,end_time
+    
+    def set_range_from_selection(self):
+        start_time,end_time = self.get_selected_time_range()
+
+        self.start_time_line.setText(int(start_time))
+        self.end_time_line.setText(int(end_time))
+    
+    def getCurrentTimeRange(self):
+        start_time = mc.playbackOptions(minTime=True,query = True)
+        start_time =int(start_time)
+        end_time = mc.playbackOptions(maxTime = True,query=True)
+        end_time = int(end_time)
+        
+        return start_time,end_time
+
+
+
+if __name__ =='__main__':
+    try:
+        d.close()
+        d.deleteLater()  # 判断窗口已经打开，如果打开了就删掉
+    except:
+        pass
+    
+    d = Animation_tools()
+    d.getCurrentTimeRange()
+    d.show()
+    # test.get_ctrl_lists()
+    # test.create_loc()
+    d.back_animatin()
+    # test.transfer_animation()
+
+
